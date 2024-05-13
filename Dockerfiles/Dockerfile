@@ -2,11 +2,9 @@
 ARG GOLANG_VERSION=1.20
 ARG USE_LOCAL=false
 ARG OVERWRITE_MANIFESTS=""
-ARG TARGETOS
-ARG TARGETARCH
 
 ################################################################################
-FROM registry.access.redhat.com/ubi8/go-toolset:$GOLANG_VERSION as builder_local_false
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi8/go-toolset:$GOLANG_VERSION as builder_local_false
 ARG OVERWRITE_MANIFESTS
 # Get all manifests from remote git repo to builder_local_false by script
 USER root
@@ -15,7 +13,7 @@ COPY get_all_manifests.sh get_all_manifests.sh
 RUN ./get_all_manifests.sh ${OVERWRITE_MANIFESTS}
 
 ################################################################################
-FROM registry.access.redhat.com/ubi8/go-toolset:$GOLANG_VERSION as builder_local_true
+FROM --platform=$BUILDPLATFORM registry.access.redhat.com/ubi8/go-toolset:$GOLANG_VERSION as builder_local_true
 # Get all manifests from local to builder_local_true
 USER root
 WORKDIR /opt
@@ -23,7 +21,7 @@ WORKDIR /opt
 COPY odh-manifests/ /opt/odh-manifests/
 
 ################################################################################
-FROM builder_local_${USE_LOCAL} as builder
+FROM --platform=$BUILDPLATFORM builder_local_${USE_LOCAL} as builder
 USER root
 WORKDIR /workspace
 # Copy the Go Modules manifests
@@ -41,6 +39,7 @@ COPY main.go main.go
 COPY pkg/ pkg/
 
 # Build
+ARG TARGETOS TARGETARCH
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o manager main.go
 
 ################################################################################

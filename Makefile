@@ -106,12 +106,12 @@ OPERATOR_MAKE_ENV_FILE = local.mk
 # Buildx function for building multi-arch image
 define func_buildx
 	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
-	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' $1 > Dockerfile.cross
+	#sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' $1 > Dockerfile.cross
 	- docker buildx create --name project-v3-builder
 	docker buildx use project-v3-builder
-	- docker buildx build --push --platform=$2 --tag $3 -f Dockerfile.cross .
+	- docker buildx build --push --platform=$2 --tag $3 -f Dockerfiles/Dockerfile .
 	- docker buildx rm project-v3-builder
-	rm Dockerfile.cross
+	#rm Dockerfile.cross
 endef
 
 .PHONY: default
