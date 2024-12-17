@@ -5,6 +5,8 @@ ARG GOLANG_VERSION=1.22
 FROM registry.access.redhat.com/ubi8/toolbox as manifests
 ARG USE_LOCAL=false
 ARG OVERWRITE_MANIFESTS=""
+ARG TARGETOS
+ARG TARGETARCH
 USER root
 WORKDIR /
 COPY opt/manifests/ /opt/manifests/
@@ -33,7 +35,7 @@ COPY main.go main.go
 COPY pkg/ pkg/
 
 # Build
-RUN CGO_ENABLED=${CGO_ENABLED} GOOS=linux GOARCH=amd64 go build -a -o manager main.go
+RUN CGO_ENABLED=${CGO_ENABLED} GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o manager main.go
 
 ################################################################################
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest

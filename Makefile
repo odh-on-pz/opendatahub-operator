@@ -106,6 +106,16 @@ IMAGE_BUILD_FLAGS += --build-arg CGO_ENABLED=$(CGO_ENABLED)
 OPERATOR_MAKE_ENV_FILE = local.mk
 -include $(OPERATOR_MAKE_ENV_FILE)
 
+define func_buildx
+	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
+	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' $1 > Dockerfile.cross
+	- docker buildx create --name project-v3-builder
+	docker buildx use project-v3-builder
+	- docker buildx build --push --platform=$2 --tag $3 -f Dockerfile.cross .
+	- docker buildx rm project-v3-builder
+	rm Dockerfile.cross
+endef
+
 
 .PHONY: default
 default: manifests generate lint unit-test build
@@ -183,6 +193,12 @@ api-docs: crd-ref-docs ## Creates API docs using https://github.com/elastic/crd-
 	grep -Ev '\.io/[^v][^1].*)$$' ./docs/api-overview.md > temp.md && mv ./temp.md ./docs/api-overview.md
 
 ##@ Build
+
+# Build multi-arch image
+PLATFORMS ?= linux/amd64,linux/s390x,linux/ppc64le
+.PHONY: docker-buildx
+docker-buildx: ## Build and push docker image for the manager for cross-platform support
+	$(call func_buildx,./Dockerfiles/Dockerfile,$(PLATFORMS),$(IMG))
 
 .PHONY: build
 build: generate fmt vet ## Build manager binary.
@@ -281,6 +297,10 @@ golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
 	test -s $(GOLANGCI_LINT) || { curl -sSfL $(GOLANGCI_LINT_INSTALL_SCRIPT) | bash -s $(GOLANGCI_LINT_VERSION); }
 
+# Bundle-Build multi-arch image
+.PHONY: bundle-docker-buildx
+bundle-docker-buildx: ## Build and push docker image for the manager for cross-platform support
+	$(call func_buildx,./Dockerfiles/bundle.Dockerfile,$(PLATFORMS),$(BUNDLE_IMG))
 
 OS=$(shell uname -s)
 ARCH=$(shell uname -m)
